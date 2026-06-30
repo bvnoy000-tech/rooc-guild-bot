@@ -41,7 +41,7 @@ def is_guild_manager():
         if perms.administrator or perms.manage_guild:
             return True
         role_names = [r.name for r in interaction.user.roles]
-        return "Guild Manager" in role_names
+        return "Guild officer" in role_names
     return app_commands.check(predicate)
 
 
@@ -147,7 +147,7 @@ async def delete(interaction: discord.Interaction, uid: str):
 async def delete_error(interaction: discord.Interaction, error):
     if isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message(
-            "❌ คำสั่งนี้สำหรับผู้ดูแลเซิร์ฟเวอร์หรือ Role 'Guild Manager' เท่านั้น",
+            "❌ คำสั่งนี้สำหรับผู้ดูแลเซิร์ฟเวอร์หรือ Role 'Guild officer' เท่านั้น",
             ephemeral=True
         )
     else:
