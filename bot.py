@@ -30,11 +30,30 @@ JOB_CHOICES = [
     app_commands.Choice(name="Super Novice", value="Super Novice"),
 ]
 
+# ---------------------------------------------------------
+# ฟังก์ชันเช็คสิทธิ์ผู้ดูแล/ผู้จัดการกิลด์
+# เช็คทั้ง Discord Permission (Administrator / Manage Server)
+# และ Role ชื่อ "Guild Manager" (ถ้ามี)
+# ---------------------------------------------------------
+def is_guild_manager():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        perms = interaction.user.guild_permissions
+        if perms.administrator or perms.manage_guild:
+            return True
+        role_names = [r.name for r in interaction.user.roles]
+        return "Guild Manager" in role_names
+    return app_commands.check(predicate)
+
+
 @client.event
 async def on_ready():
     await tree.sync()
     print(f"✅ Bot พร้อมใช้งาน: {client.user}")
 
+
+# ---------------------------------------------------------
+# /update — อัปเดตชื่อตัวละครและอาชีพของตัวเอง (ใช้ได้ทุกคน)
+# ---------------------------------------------------------
 @tree.command(name="update", description="อัปเดตชื่อตัวละครและอาชีพของคุณ")
 @app_commands.describe(
     uid="UID ในเกม (ตัวเลข 6 หลัก)",
@@ -68,6 +87,10 @@ async def update(interaction: discord.Interaction, uid: str, charname: str, job:
         except Exception as e:
             await interaction.followup.send(f"❌ เชื่อมต่อ API ไม่ได้: {e}")
 
+
+# ---------------------------------------------------------
+# /roster — ดูรายชื่อสมาชิกทั้งหมด (ใช้ได้ทุกคน)
+# ---------------------------------------------------------
 @tree.command(name="roster", description="ดูรายชื่อสมาชิกกิลด์ทั้งหมด")
 async def roster(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -93,5 +116,42 @@ async def roster(interaction: discord.Interaction):
 
         except Exception as e:
             await interaction.followup.send(f"❌ โหลดข้อมูลไม่ได้: {e}")
+
+
+# ---------------------------------------------------------
+# /delete — ลบสมาชิกออกจากกิลด์ (สำหรับผู้ดูแล/ผู้จัดการกิลด์เท่านั้น)
+# ---------------------------------------------------------
+@tree.command(name="delete", description="ลบสมาชิกออกจากกิลด์ (สำหรับผู้ดูแลเท่านั้น)")
+@app_commands.describe(uid="UID ของสมาชิกที่ต้องการลบ (ตัวเลข 6 หลัก)")
+@is_guild_manager()
+async def delete(interaction: discord.Interaction, uid: str):
+    if not uid.isdigit() or len(uid) != 6:
+        await interaction.response.send_message("❌ UID ต้องเป็นตัวเลข 6 หลัก", ephemeral=True)
+        return
+
+    await interaction.response.defer()
+    async with aiohttp.ClientSession() as session:
+        try:
+            payload = {"action": "delete", "uid": uid}
+            async with session.post(API_URL, json=payload) as resp:
+                data = await resp.json(content_type=None)
+            if data.get("error"):
+                await interaction.followup.send(f"❌ {data['error']}")
+            else:
+                await interaction.followup.send(data.get("message", "🗑️ ลบสำเร็จ"))
+        except Exception as e:
+            await interaction.followup.send(f"❌ เชื่อมต่อ API ไม่ได้: {e}")
+
+
+@delete.error
+async def delete_error(interaction: discord.Interaction, error):
+    if isinstance(error, app_commands.CheckFailure):
+        await interaction.response.send_message(
+            "❌ คำสั่งนี้สำหรับผู้ดูแลเซิร์ฟเวอร์หรือ Role 'Guild Manager' เท่านั้น",
+            ephemeral=True
+        )
+    else:
+        await interaction.response.send_message(f"❌ เกิดข้อผิดพลาด: {error}", ephemeral=True)
+
 
 client.run(TOKEN)
