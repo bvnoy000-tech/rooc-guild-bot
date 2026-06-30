@@ -38,12 +38,11 @@ async def on_ready():
 @tree.command(name="update", description="อัปเดตชื่อตัวละครและอาชีพของคุณ")
 @app_commands.describe(
     uid="UID ในเกม (ตัวเลข 6 หลัก)",
-    ign="ชื่อตัวละคร",
+    charname="ชื่อตัวละคร",
     job="อาชีพของตัวละคร"
 )
 @app_commands.choices(job=JOB_CHOICES)
-async def update(interaction: discord.Interaction, uid: str, ign: str, job: app_commands.Choice[str]):
-    # ตรวจสอบ UID ต้องเป็นตัวเลขล้วน และต้องเป็น 6 หลักพอดี
+async def update(interaction: discord.Interaction, uid: str, charname: str, job: app_commands.Choice[str]):
     if not uid.isdigit():
         await interaction.response.send_message("❌ UID ต้องเป็นตัวเลขเท่านั้น", ephemeral=True)
         return
@@ -57,7 +56,7 @@ async def update(interaction: discord.Interaction, uid: str, ign: str, job: app_
             payload = {
                 "action": "upsert",
                 "uid": uid,
-                "ign": ign,
+                "ign": charname,
                 "class": job.value
             }
             async with session.post(API_URL, json=payload) as resp:
