@@ -37,14 +37,21 @@ async def on_ready():
 
 @tree.command(name="update", description="อัปเดตชื่อตัวละครและอาชีพของคุณ")
 @app_commands.describe(
-    uid="UID ในเกม (ดูได้ที่ตัวละคร → ข้อมูล)",
-    ign="ชื่อตัวละครในเกม",
+    uid="UID ในเกม (ตัวเลข 6 หลัก)",
+    ign="ชื่อตัวละคร",
     job="อาชีพของตัวละคร"
 )
 @app_commands.choices(job=JOB_CHOICES)
 async def update(interaction: discord.Interaction, uid: str, ign: str, job: app_commands.Choice[str]):
-    await interaction.response.defer()
+    # ตรวจสอบ UID ต้องเป็นตัวเลขล้วน และต้องเป็น 6 หลักพอดี
+    if not uid.isdigit():
+        await interaction.response.send_message("❌ UID ต้องเป็นตัวเลขเท่านั้น", ephemeral=True)
+        return
+    if len(uid) != 6:
+        await interaction.response.send_message("❌ UID ต้องเป็นตัวเลข 6 หลัก", ephemeral=True)
+        return
 
+    await interaction.response.defer()
     async with aiohttp.ClientSession() as session:
         try:
             payload = {
@@ -55,12 +62,10 @@ async def update(interaction: discord.Interaction, uid: str, ign: str, job: app_
             }
             async with session.post(API_URL, json=payload) as resp:
                 data = await resp.json(content_type=None)
-
             if data.get("error"):
                 await interaction.followup.send(f"❌ {data['error']}")
             else:
                 await interaction.followup.send(data.get("message", "✅ บันทึกสำเร็จ"))
-
         except Exception as e:
             await interaction.followup.send(f"❌ เชื่อมต่อ API ไม่ได้: {e}")
 
