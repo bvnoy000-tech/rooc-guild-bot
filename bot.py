@@ -134,16 +134,16 @@ async def member_autocomplete(interaction: discord.Interaction, current: str):
     current_lower = current.lower()
     matches = [
         m for m in members
-        if current_lower in str(m.get("uid", "")).lower()
+        if current_lower in str(m.get("uid", "")).zfill(6).lower()
         or current_lower in str(m.get("ign", "")).lower()
     ]
 
     return [
         app_commands.Choice(
-            name=f"{m.get('ign','?')} ({m.get('class','?')}) — UID {m.get('uid','?')}",
-            value=str(m.get("uid", ""))
+            name=f"{m.get('ign','?')} ({m.get('class','?')}) — UID {str(m.get('uid','')).zfill(6)}",
+            value=str(m.get("uid", "")).zfill(6)  # ← padStart ให้ครบ 6 หลักก่อนส่งค่า
         )
-        for m in matches[:25]  # Discord จำกัดสูงสุด 25 choices
+        for m in matches[:25]
     ]
 
 
