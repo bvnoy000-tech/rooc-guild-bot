@@ -119,10 +119,40 @@ async def roster(interaction: discord.Interaction):
 
 
 # ---------------------------------------------------------
+# Autocomplete สำหรับช่อง uid ในคำสั่ง /delete
+# พิมพ์บางส่วนของ UID หรือชื่อตัวละคร จะขึ้นลิสต์สมาชิกให้เลือก
+# ---------------------------------------------------------
+async def member_autocomplete(interaction: discord.Interaction, current: str):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{API_URL}?action=getAll") as resp:
+                data = await resp.json(content_type=None)
+        members = data.get("members", [])
+    except Exception:
+        return []
+
+    current_lower = current.lower()
+    matches = [
+        m for m in members
+        if current_lower in str(m.get("uid", "")).lower()
+        or current_lower in str(m.get("ign", "")).lower()
+    ]
+
+    return [
+        app_commands.Choice(
+            name=f"{m.get('ign','?')} ({m.get('class','?')}) — UID {m.get('uid','?')}",
+            value=str(m.get("uid", ""))
+        )
+        for m in matches[:25]  # Discord จำกัดสูงสุด 25 choices
+    ]
+
+
+# ---------------------------------------------------------
 # /delete — ลบสมาชิกออกจากกิลด์ (สำหรับผู้ดูแล/ผู้จัดการกิลด์เท่านั้น)
 # ---------------------------------------------------------
 @tree.command(name="delete", description="ลบสมาชิกออกจากกิลด์ (สำหรับผู้ดูแลเท่านั้น)")
-@app_commands.describe(uid="UID ของสมาชิกที่ต้องการลบ (ตัวเลข 6 หลัก)")
+@app_commands.describe(uid="เลือกสมาชิกที่ต้องการลบ (พิมพ์ชื่อหรือ UID เพื่อค้นหา)")
+@app_commands.autocomplete(uid=member_autocomplete)
 @is_guild_manager()
 async def delete(interaction: discord.Interaction, uid: str):
     if not uid.isdigit() or len(uid) != 6:
